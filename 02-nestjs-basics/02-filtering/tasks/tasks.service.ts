@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { Task, TaskStatus } from "./task.model";
 
 @Injectable()
@@ -36,9 +36,34 @@ export class TasksService {
     },
   ];
 
+  private readonly isPositive = (num?: number) => Number(num) > 0;
+
   getFilteredTasks(
     status?: TaskStatus,
     page?: number,
     limit?: number,
-  ): Task[] {}
+  ): Task[] | undefined {
+    let filteredTasks = this.tasks;
+
+    if (status && !Object.values(TaskStatus).includes(status))
+      throw new HttpException("Некорректный статус", HttpStatus.BAD_REQUEST);
+
+    if ((page && !this.isPositive(page)) || (limit && !this.isPositive(limit)))
+      throw new HttpException(
+        "Некорректные параметры пагинации",
+        HttpStatus.BAD_REQUEST,
+      );
+
+    if (status) {
+      filteredTasks = filteredTasks.filter((task) => task.status === status);
+    }
+
+    if (page && limit) {
+      const amount = page * limit;
+
+      filteredTasks = filteredTasks.slice(amount - limit, limit);
+    }
+
+    return filteredTasks;
+  }
 }
